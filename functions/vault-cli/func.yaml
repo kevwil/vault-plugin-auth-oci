@@ -1,0 +1,5 @@
+schema_version: 20180708
+name: vault-cli
+version: 0.0.15
+runtime: docker
+memory: 2048

@@ -1,4 +1,5 @@
 // Copyright © 2019, Oracle and/or its affiliates.
+
 package ociauth
 
 import (
@@ -32,10 +33,10 @@ func NewAuthenticationClientWithConfigurationProvider(configProvider common.Conf
 	return
 }
 
-// SetRegion overrides the region of this client.
-func (client *AuthenticationClient) SetHost(host string) {
-	client.Host = host
-}
+// // SetRegion overrides the region of this client.
+// func (client *AuthenticationClient) SetHost(host string) {
+// 	client.Host = host
+// }
 
 // SetConfigurationProvider sets the configuration provider including the region, returns an error if is not valid
 func (client *AuthenticationClient) setConfigurationProvider(configProvider common.ConfigurationProvider) error {
@@ -49,20 +50,20 @@ func (client *AuthenticationClient) setConfigurationProvider(configProvider comm
 	if regionURL, ok := os.LookupEnv("OCI_SDK_AUTH_CLIENT_REGION_URL"); ok {
 		client.Host = regionURL
 	} else {
-		client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "auth", string(region))
+		client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "auth", region)
 	}
 	client.BasePath = "/v1"
 	return nil
 }
 
-// SetRegion overrides the region of this client.
-func (client *AuthenticationClient) SetRegion(region string) {
-	client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "auth", region)
-}
+// // SetRegion overrides the region of this client.
+// func (client *AuthenticationClient) SetRegion(region string) {
+// 	client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "auth", region)
+// }
 
 // AuthenticateClient takes in a request to authenticate a client, makes the API request to OCI Identity and returns the Response.
 // If the authentication is successful, the AuthenticateClientResult member of the response will contain the Principal of the authenticated entity.
-func (client AuthenticationClient) AuthenticateClient(ctx context.Context, request AuthenticateClientRequest) (response AuthenticateClientResponse, err error) {
+func (client *AuthenticationClient) AuthenticateClient(ctx context.Context, request AuthenticateClientRequest) (response AuthenticateClientResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
 	if request.RetryPolicy() != nil {
@@ -88,7 +89,7 @@ func (client AuthenticationClient) AuthenticateClient(ctx context.Context, reque
 	return
 }
 
-func (client AuthenticationClient) authenticateClient(ctx context.Context, request common.OCIRequest, binaryRequestBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+func (client *AuthenticationClient) authenticateClient(ctx context.Context, request common.OCIRequest, binaryRequestBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
 	httpRequest, err := request.HTTPRequest(http.MethodPost, "/authentication/authenticateClient", binaryRequestBody, extraHeaders)
 	if err != nil {
 		return nil, err
@@ -110,7 +111,7 @@ func (client AuthenticationClient) authenticateClient(ctx context.Context, reque
 
 // FilterGroupMembership takes in a list of Group or Dynamic Group IDs and a Principal context and makes an API request to OCI Identity.
 // If the request is successful, it returns the subset of the request groups that the entity corresponding to the Principal is a part of.
-func (client AuthenticationClient) FilterGroupMembership(ctx context.Context, request FilterGroupMembershipRequest) (response FilterGroupMembershipResponse, err error) {
+func (client *AuthenticationClient) FilterGroupMembership(ctx context.Context, request FilterGroupMembershipRequest) (response FilterGroupMembershipResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
 	if request.RetryPolicy() != nil {
@@ -136,7 +137,7 @@ func (client AuthenticationClient) FilterGroupMembership(ctx context.Context, re
 	return
 }
 
-func (client AuthenticationClient) filterGroupMembership(ctx context.Context, request common.OCIRequest, binaryRequestBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+func (client *AuthenticationClient) filterGroupMembership(ctx context.Context, request common.OCIRequest, binaryRequestBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
 	httpRequest, err := request.HTTPRequest(http.MethodPost, "/filterGroupMembership", binaryRequestBody, extraHeaders)
 	if err != nil {
 		return nil, err

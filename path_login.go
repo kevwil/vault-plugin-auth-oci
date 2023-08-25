@@ -1,4 +1,5 @@
 // Copyright © 2019, Oracle and/or its affiliates.
+
 package ociauth
 
 import (
@@ -49,10 +50,18 @@ func pathLoginRole(b *backend) *framework.Path {
 				Type:        framework.TypeLowerCaseString,
 				Description: "Name of the role.",
 			},
+			"auth_type": {
+				Type:        framework.TypeLowerCaseString,
+				Description: "The type of auth used.",
+			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation:      b.pathLoginUpdate,
-			logical.ResolveRoleOperation: b.pathResolveRole,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathLoginUpdate,
+			},
+			logical.ResolveRoleOperation: &framework.PathOperation{
+				Callback: b.pathResolveRole,
+			},
 		},
 
 		HelpSynopsis:    pathLoginRoleSyn,
@@ -71,6 +80,10 @@ func pathLogin(b *backend) *framework.Path {
 			"role": {
 				Type:        framework.TypeLowerCaseString,
 				Description: "Name of the role.",
+			},
+			"auth_type": {
+				Type:        framework.TypeLowerCaseString,
+				Description: "The type of auth used.",
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -105,6 +118,10 @@ func (b *backend) pathResolveRole(ctx context.Context, req *logical.Request, dat
 
 func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 
+	// need to detect which auth_type to use.
+
+	b.Logger().Trace("login called on oci auth plugin", "data", data, "req.data", req.Data)
+
 	// Validate the role
 	role, ok := data.GetOk("role")
 	if !ok {
@@ -121,7 +138,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 	}
 
 	if roleEntry == nil {
-		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("Role is not found")), nil
+		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("role is not found")), nil
 	}
 
 	// Parse the authentication headers
@@ -141,20 +158,28 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 	authenticateClientDetails := AuthenticateClientDetails{
 		RequestHeaders: authenticateRequestHeaders,
 	}
+	b.Logger().Trace("the authenticateClientDetails object", "details", authenticateClientDetails)
 
 	requestMetadata := common.RequestMetadata{
-		nil,
+		RetryPolicy: nil,
 	}
 
 	authenticateClientRequest := AuthenticateClientRequest{
-		authenticateClientDetails,
-		nil,
-		&req.ID,
-		requestMetadata,
+		AuthenticateClientDetails: authenticateClientDetails,
+		OpcRetryToken:             nil,
+		OpcRequestId:              &req.ID,
+		RequestMetadata:           requestMetadata,
 	}
+	b.Logger().Trace("the authenticateClientRequest object", "object", authenticateClientRequest)
+
+	at, ok := data.GetOk("auth_type")
+	if !ok {
+		return logical.ErrorResponse("Auth type is not specified"), nil
+	}
+	authType := at.(string)
 
 	// Authenticate the request with Identity
-	if b.authenticationClient == nil && b.createAuthClient() != nil {
+	if b.authenticationClient == nil && b.createAuthClient(authType) != nil {
 		return logical.RespondWithStatusCode(nil, req, http.StatusInternalServerError)
 	}
 	authenticateClientResponse, err := b.authenticationClient.AuthenticateClient(ctx, authenticateClientRequest)
@@ -170,8 +195,8 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 	principalType := internalClaims.GetString(ClaimPrincipalType)
 
 	// Check the principal type
-	if principalType != PrincipalTypeInstance && principalType != PrincipalTypeUser {
-		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("Unrecognized principalType: %v", principalType)), nil
+	if principalType != PrincipalTypeResource && principalType != PrincipalTypeInstance && principalType != PrincipalTypeUser {
+		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("unrecognized principalType: %v", principalType)), nil
 	}
 
 	b.Logger().Trace("Authentication ok", "Method:", method, "targetUrl:", targetUrl, "id", req.ID)
@@ -200,10 +225,10 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 		return badRequestLogicalResponse(req, b.Logger(), err), nil
 	}
 	if filterGroupMembershipResponse.GroupIds == nil {
-		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("No membership OCIDs found")), nil
+		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("no membership OCIDs found")), nil
 	}
 
-	// Validate that the filtered list contains atleast one of the OCIDs of the Role
+	// Validate that the filtered list contains at least one of the OCIDs of the Role
 	filteredOcidMap := sliceToMap(filterGroupMembershipResponse.GroupIds)
 	found := false
 	for _, item := range roleEntry.OcidList {
@@ -214,7 +239,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 		}
 	}
 	if found == false {
-		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("Entity not a part of any of the Role OCIDs")), nil
+		return badRequestLogicalResponse(req, b.Logger(), fmt.Errorf("entity not a part of any of the Role OCIDs")), nil
 	}
 
 	b.Logger().Trace("Login ok", "Method:", method, "targetUrl:", targetUrl, "id", req.ID)
@@ -251,11 +276,11 @@ func (b *backend) validateHomeTenancy(ctx context.Context, req *logical.Request,
 	}
 
 	if configEntry == nil || configEntry.HomeTenancyId == "" {
-		return fmt.Errorf("Home Tenancy is invalid")
+		return fmt.Errorf("home Tenancy is invalid")
 	}
 
 	if homeTenancyId != configEntry.HomeTenancyId {
-		return fmt.Errorf("Invalid Tenancy")
+		return fmt.Errorf("invalid Tenancy")
 	}
 
 	return nil

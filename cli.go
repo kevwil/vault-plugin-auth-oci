@@ -1,4 +1,5 @@
 // Copyright © 2019, Oracle and/or its affiliates.
+
 package ociauth
 
 import (
@@ -7,8 +8,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
+	log "github.com/hashicorp/go-hclog"
 
+	"github.com/hashicorp/vault/api"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
 )
@@ -17,8 +19,10 @@ type CLIHandler struct{}
 
 func (h *CLIHandler) Help() string {
 	help := `
+authors: ODC OA
 Usage: vault login -method=oci auth_type=apikey 
        vault login -method=oci auth_type=instance 
+       vault login -method=oci auth_type=resource 
 
   The OCI auth method allows users to authenticate with OCI
   credentials. The OCI credentials may be specified in a number of ways,
@@ -27,6 +31,8 @@ Usage: vault login -method=oci auth_type=apikey
     1. API Key
 
     2. Instance Principal
+
+    2. Resource Principal
 
   Authenticate using API key:
 
@@ -40,16 +46,24 @@ Usage: vault login -method=oci auth_type=apikey
 		
 		$ vault login -method=oci auth_type=instance role=<RoleName>
 
+  Authenticate using Resource Principal:
+		https://docs.cloud.oracle.com/
+		
+		$ vault login -method=oci auth_type=resource role=<RoleName>
+
 Configuration:
   auth_type=<string>
       Enter one of following: 
 		apikey (or) ak		
-		instance (or) ip
+		instance (or) ip		
+		resource (or) rp
 `
 	return strings.TrimSpace(help)
 }
 
 func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+	log.L().Trace("cli.go Auth() map", "m", m)
+
 	mount, ok := m["mount"]
 	if !ok {
 		mount = "oci"
@@ -70,7 +84,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		return nil, err
 	}
 
-	// Now try to login
+	// Now try to log in
 	secret, err := c.Logical().Write(path, data)
 	if err != nil {
 		return nil, err
@@ -78,7 +92,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	return secret, nil
 }
 
-// CreateLoginData creates the interface required for a login request, signed using the corresponding OCI Identity Principal
+// CreateLoginData creates the interface required for a login request, signed using the corresponding OCI Principal
 func CreateLoginData(addr string, m map[string]string, path string) (map[string]interface{}, error) {
 	authType, ok := m["auth_type"]
 	if !ok {
@@ -121,13 +135,16 @@ func GetSignedInstanceRequestHeaders(addr, path string) (http.Header, error) {
 }
 
 func GetSignedResourcePrincipalRequestHeaders(addr, path string) (http.Header, error) {
+	fmt.Printf("entered GetSignedResourcePrincipalRequestHeaders\n")
 	rp, err := auth.ResourcePrincipalConfigurationProvider()
 	if err != nil {
+		fmt.Printf("error getting ResourcePrincipalConfigurationProvider: %v\n", err)
 		return nil, err
 	}
 
 	c, err := NewOciClientWithConfigurationProvider(rp)
 	if err != nil {
+		fmt.Printf("error getting NewOciClientWithConfigurationProvider: %v\n", err)
 		return nil, err
 	}
 	return getSignedRequestHeaders(addr, &c, path)

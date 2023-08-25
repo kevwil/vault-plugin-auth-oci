@@ -1,12 +1,14 @@
 // Copyright © 2019, Oracle and/or its affiliates.
+
 package ociauth
 
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"strings"
 )
 
 // These constants store the configuration keys

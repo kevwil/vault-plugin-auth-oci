@@ -1,4 +1,5 @@
 // Copyright © 2019, Oracle and/or its affiliates.
+
 package ociauth
 
 import (
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/oracle/oci-go-sdk/v65/common"
 )
 
@@ -36,6 +36,7 @@ const (
 func NewOciClientWithConfigurationProvider(configProvider common.ConfigurationProvider) (client OciClient, err error) {
 	baseClient, err := common.NewClientWithConfig(configProvider)
 	if err != nil {
+		fmt.Println("NewClientWithConfig failed", err)
 		return client, err
 	}
 
@@ -46,9 +47,9 @@ func NewOciClientWithConfigurationProvider(configProvider common.ConfigurationPr
 
 // SetConfigurationProvider sets the configuration provider including the region, returns an error if is not valid
 func (client *OciClient) setConfigurationProvider(configProvider common.ConfigurationProvider) error {
-	if ok, err := common.IsConfigurationProviderValid(configProvider); !ok {
-		return err
-	}
+	// if ok, err := common.IsConfigurationProviderValid(configProvider); !ok {
+	// 	return err
+	// }
 
 	// Error has been checked already
 	client.config = &configProvider
@@ -56,7 +57,7 @@ func (client *OciClient) setConfigurationProvider(configProvider common.Configur
 }
 
 // ConstructLoginRequest takes in a path and returns a signed http request
-func (client OciClient) ConstructLoginRequest(path string) (request http.Request, err error) {
+func (client *OciClient) ConstructLoginRequest(path string) (request http.Request, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, path, request)
 	if err != nil {
 		return
@@ -95,7 +96,7 @@ func (client *OciClient) prepareRequest(request *http.Request) (err error) {
 
 	clientURL, err := url.Parse(client.Host)
 	if err != nil {
-		return errwrap.Wrapf("host is invalid. {{err}}", err)
+		return fmt.Errorf("host is invalid. %v", err)
 	}
 	request.URL.Host = clientURL.Host
 	request.URL.Scheme = clientURL.Scheme

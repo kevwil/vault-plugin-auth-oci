@@ -1,9 +1,11 @@
 // Copyright © 2019, Oracle and/or its affiliates.
+
 package ociauth
 
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"

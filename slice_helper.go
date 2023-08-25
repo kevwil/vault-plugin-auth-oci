@@ -1,4 +1,5 @@
 // Copyright © 2019, Oracle and/or its affiliates.
+
 package ociauth
 
 func sliceToMap(inputSlice []string) map[string]string {

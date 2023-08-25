@@ -45,6 +45,7 @@ func createHomeTenancy(t *testing.T, backendConfig *logical.BackendConfig, backe
 
 	configReq.Path = configPath
 	resp, err = backend.HandleRequest(context.Background(), configReq)
+	backend.Logger().Debug("creating home tenancy config", "response", resp)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: config creation failed. resp:%#v\n err:%v", resp, err)
 	}
@@ -128,6 +129,7 @@ func createRole(roleData map[string]interface{}, roleName string, backend logica
 
 	roleRequest.Path = "role/" + roleName
 	response, err := backend.HandleRequest(context.Background(), roleRequest)
+	backend.Logger().Debug("createRole", "response", response)
 	if err != nil || (response != nil && response.IsError()) {
 		return fmt.Errorf("bad: role creation failed. resp:%#v\n err:%v", response, err)
 	}
